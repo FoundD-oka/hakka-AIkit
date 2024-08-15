@@ -71,7 +71,6 @@ export const MessageInput = ({
     }
   }
 
-  console.log('MessageInput render, isMicRecording:', isMicRecording);
 
   return (
     <div className="absolute bottom-0 z-20 w-screen">
@@ -91,7 +90,6 @@ export const MessageInput = ({
               isProcessing={isMicRecording}
               disabled={chatProcessing}
               onClick={(e) => {
-                console.log('Mic button clicked, isMicRecording:', isMicRecording);
                 onClickMicButton(e);
               }}
               className="bg-secondary hover:bg-secondary-hover active:bg-secondary-press disabled:bg-secondary-disabled"

@@ -17,7 +17,6 @@ export const IconButton = ({
   label,
   ...rest
 }: Props) => {
-  console.log('IconButton render, isProcessing:', isProcessing);  // デバッグ用ログ
 
   return (
     <button

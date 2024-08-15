@@ -86,7 +86,6 @@ export const Menu = () => {
   }, [])
 
   useEffect(() => {
-    console.log('onChangeWebcamStatus')
     homeStore.setState({ webcamStatus: showWebcam })
 
     if (showWebcam) {

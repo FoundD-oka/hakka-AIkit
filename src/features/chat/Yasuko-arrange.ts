@@ -88,9 +88,7 @@ function clearTempTranscriptions() {
 }
 
 export function startPeriodicCorrection() {
-  console.log('定期的な校正を開始します')
   return setInterval(async () => {
-    console.log('リアルタイム文字起こしの校正をチェックします')
     const storedTranscriptions: Transcription[] = JSON.parse(localStorage.getItem('transcriptions') || '[]')
     if (storedTranscriptions.length > 0) {
       // tempTranscriptionsに保存し、transcriptionsを空にする
@@ -98,14 +96,12 @@ export function startPeriodicCorrection() {
       localStorage.setItem('transcriptions', '[]')
 
       const textToCorrect = tempTranscriptions.map(t => `${formatTimestamp(t.timestamp)}: ${t.text}`).join('\n')
-      console.log('校正のために送信するテキスト:', textToCorrect)
       
       try {
         // 校正が成功した場合
         const correctedText = await getYasukoArrangeResponse([{ role: 'user', content: textToCorrect }])
         onCorrectedTextReceived(correctedText)
       } catch (error) {
-        console.error('校正中にエラーが発生しました:', error)
         // エラーの場合、tempTranscriptionsをそのまま correctedText に保存
         const uncorrectedText = tempTranscriptions.map(t => `${formatTimestamp(t.timestamp)}: ${t.text}`).join('\n')
         onCorrectedTextReceived(uncorrectedText)

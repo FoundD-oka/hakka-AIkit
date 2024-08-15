@@ -92,7 +92,6 @@ export const MessageInputContainer = ({ onChatProcessStart }: Props) => {
     }
   }, [chatProcessing])
 
-  console.log('MessageInputContainer render, isMicRecording:', isMicRecording);
 
   return (
     <MessageInput
