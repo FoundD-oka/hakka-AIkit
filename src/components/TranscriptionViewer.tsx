@@ -28,14 +28,18 @@ export const TranscriptionViewer: React.FC = () => {
   }
 
   return (
-    <div className="fixed right-0 top-0 w-1/3 min-w-[300px] max-w-[33.333vw] h-full bg-white bg-opacity-80 overflow-y-auto p-4 shadow-lg">
-      <h2 className="text-xl font-bold mb-4">文字起こしデータ</h2>
-      {transcriptions.map((item, index) => (
-        <div key={index} className="mb-2">
-          <span className="font-semibold">{new Date(item.timestamp).toLocaleTimeString()}: </span>
-          <span className="break-words">{item.text}</span>
+    <div className="fixed right-0 top-0 min-w-[300px] max-w-[33.333vw] h-full bg-white bg-opacity-80 shadow-lg z-10">
+      <div className="h-full overflow-y-auto" style={{ margin: '20px 20px 0' }}>
+        <div className="space-y-8">
+          <h2 className="text-xl font-bold">文字起こしデータ</h2>
+          {transcriptions.map((item, index) => (
+            <div key={index}>
+              <span className="font-semibold">{new Date(item.timestamp).toLocaleTimeString()}: </span>
+              <span className="break-words">{item.text}</span>
+            </div>
+          ))}
         </div>
-      ))}
+      </div>
     </div>
   )
 }
