@@ -71,14 +71,17 @@ export const MessageInput = ({
     }
   }
 
+  console.log('MessageInput render, isMicRecording:', isMicRecording);
+
   return (
     <div className="absolute bottom-0 z-20 w-screen">
       <div className="bg-base text-black">
         <div className="mx-auto max-w-4xl p-16">
           <div className="grid grid-flow-col gap-[8px] grid-cols-[min-content_1fr_min-content]">
             <IconButton
-              icon={isTranscribing ? <PauseIcon className="w-24 h-24" /> : <NewspaperIcon className="w-24 h-24" />}
-              isProcessing={isMicRecording}
+              icon={<NewspaperIcon className="w-24 h-24" />}
+              processingIcon={<PauseIcon className="w-24 h-24" />}
+              isProcessing={isTranscribing}
               disabled={chatProcessing}
               onClick={onClickTranscribeButton}
               className="bg-secondary hover:bg-secondary-hover active:bg-secondary-press disabled:bg-secondary-disabled absolute left-0 ml-16"
@@ -87,7 +90,10 @@ export const MessageInput = ({
               icon={<MicrophoneIcon className="w-24 h-24" />}
               isProcessing={isMicRecording}
               disabled={chatProcessing}
-              onClick={onClickMicButton}
+              onClick={(e) => {
+                console.log('Mic button clicked, isMicRecording:', isMicRecording);
+                onClickMicButton(e);
+              }}
               className="bg-secondary hover:bg-secondary-hover active:bg-secondary-press disabled:bg-secondary-disabled"
             />
             <textarea
@@ -99,7 +105,7 @@ export const MessageInput = ({
               onChange={onChangeUserMessage}
               onKeyDown={handleKeyPress}
               disabled={chatProcessing || slidePlaying}
-              className="bg-surface1 hover:bg-surface1-hover focus:bg-surface1 disabled:bg-surface1-disabled disabled:text-primary-disabled rounded-16 w-full px-16 text-text-primary typography-16 font-bold disabled"
+              className="bg-surface1 hover:bg-surface1-hover focus:bg-surface1 disabled:bg-surface1-disabled rounded-16 w-full px-16 text-text-primary typography-16 font-bold disabled"
               value={chatProcessing ? '' : userMessage}
               rows={rows}
               style={{ lineHeight: '1.5', padding: '8px 16px', resize: 'none' }}

@@ -1,11 +1,11 @@
-import { ReactNode } from 'react'
-import { ButtonHTMLAttributes } from 'react'
 import { KnownIconType } from '@charcoal-ui/icons'
+import { ButtonHTMLAttributes, ReactNode } from 'react'
 
 type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
   icon?: ReactNode
   iconName?: keyof KnownIconType
   isProcessing: boolean
+  processingIcon?: ReactNode
   label?: string
 }
 
@@ -13,9 +13,12 @@ export const IconButton = ({
   icon,
   iconName,
   isProcessing,
+  processingIcon,
   label,
   ...rest
 }: Props) => {
+  console.log('IconButton render, isProcessing:', isProcessing);  // デバッグ用ログ
+
   return (
     <button
       {...rest}
@@ -24,7 +27,7 @@ export const IconButton = ({
       `}
     >
       {isProcessing ? (
-        <div className="animate-spin rounded-full h-24 w-24 border-t-2 border-b-2 border-white"></div>
+        processingIcon || <pixiv-icon name={'24/Dot'} scale="1"></pixiv-icon>
       ) : icon ? (
         icon
       ) : iconName ? (
