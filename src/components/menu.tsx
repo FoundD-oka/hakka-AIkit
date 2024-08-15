@@ -12,6 +12,8 @@ import { IconButton } from './iconButton'
 import Settings from './settings'
 import { Webcam } from './webcam'
 import Slides from './slides'
+import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline'
+import { TranscriptionViewer } from './TranscriptionViewer'
 
 export const Menu = () => {
   const selectAIService = settingsStore((s) => s.selectAIService)
@@ -25,6 +27,7 @@ export const Menu = () => {
   const showWebcam = menuStore((s) => s.showWebcam)
   const showSettingsButton = menuStore((s) => s.showSettingsButton)
   const slidePlaying = slideStore((s) => s.isPlaying)
+  const showTranscriptionViewer = menuStore((s) => s.showTranscriptionViewer)
 
   const [showSettings, setShowSettings] = useState(false)
   const [showChatLog, setShowChatLog] = useState(false)
@@ -203,6 +206,13 @@ export const Menu = () => {
               />
             </div>
           )}
+          <div className="order-5">
+            <IconButton
+              icon={showTranscriptionViewer ? <EyeSlashIcon className="w-24 h-24" /> : <EyeIcon className="w-24 h-24" />}
+              isProcessing={false}
+              onClick={() => menuStore.setState({ showTranscriptionViewer: !showTranscriptionViewer })}
+            />
+          </div>
         </div>
       </div>
       <div className="relative">
@@ -258,6 +268,7 @@ export const Menu = () => {
           }
         }}
       />
+      <TranscriptionViewer />
     </>
   )
 }
