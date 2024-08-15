@@ -1,29 +1,33 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-
 import homeStore from '@/features/stores/home'
 import slideStore from '@/features/stores/slide'
+import { MicrophoneIcon, NewspaperIcon, PauseIcon, PaperAirplaneIcon } from '@heroicons/react/24/solid'
 import { IconButton } from './iconButton'
 
 type Props = {
   userMessage: string
   isMicRecording: boolean
+  isTranscribing: boolean
   onChangeUserMessage: (
     event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => void
   onClickSendButton: (event: React.MouseEvent<HTMLButtonElement>) => void
   onClickMicButton: (event: React.MouseEvent<HTMLButtonElement>) => void
+  onClickTranscribeButton: (event: React.MouseEvent<HTMLButtonElement>) => void
 }
 
 export const MessageInput = ({
   userMessage,
   isMicRecording,
+  isTranscribing,
   onChangeUserMessage,
   onClickMicButton,
   onClickSendButton,
+  onClickTranscribeButton,
 }: Props) => {
-  const chatProcessing = homeStore((s) => s.chatProcessing)
-  const slidePlaying = slideStore((s) => s.isPlaying)
+  const chatProcessing = homeStore((s: { chatProcessing: boolean }) => s.chatProcessing)
+  const slidePlaying = slideStore((s: { isPlaying: boolean }) => s.isPlaying)
   const [rows, setRows] = useState(1)
   const [loadingDots, setLoadingDots] = useState('')
 
@@ -73,11 +77,18 @@ export const MessageInput = ({
         <div className="mx-auto max-w-4xl p-16">
           <div className="grid grid-flow-col gap-[8px] grid-cols-[min-content_1fr_min-content]">
             <IconButton
-              iconName="24/Microphone"
-              className="bg-secondary hover:bg-secondary-hover active:bg-secondary-press disabled:bg-secondary-disabled"
+              icon={isTranscribing ? <PauseIcon className="w-24 h-24" /> : <NewspaperIcon className="w-24 h-24" />}
+              isProcessing={isMicRecording}
+              disabled={chatProcessing}
+              onClick={onClickTranscribeButton}
+              className="bg-secondary hover:bg-secondary-hover active:bg-secondary-press disabled:bg-secondary-disabled absolute left-0 ml-16"
+            />
+            <IconButton
+              icon={<MicrophoneIcon className="w-24 h-24" />}
               isProcessing={isMicRecording}
               disabled={chatProcessing}
               onClick={onClickMicButton}
+              className="bg-secondary hover:bg-secondary-hover active:bg-secondary-press disabled:bg-secondary-disabled"
             />
             <textarea
               placeholder={
@@ -93,13 +104,12 @@ export const MessageInput = ({
               rows={rows}
               style={{ lineHeight: '1.5', padding: '8px 16px', resize: 'none' }}
             ></textarea>
-
             <IconButton
-              iconName="24/Send"
-              className="bg-secondary hover:bg-secondary-hover active:bg-secondary-press disabled:bg-secondary-disabled"
+              icon={<PaperAirplaneIcon className="w-24 h-24" />}
               isProcessing={chatProcessing}
               disabled={chatProcessing || !userMessage}
               onClick={onClickSendButton}
+              className="bg-secondary hover:bg-secondary-hover active:bg-secondary-press disabled:bg-secondary-disabled"
             />
           </div>
         </div>

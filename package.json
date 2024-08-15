@@ -35,7 +35,8 @@
     "react-dom": "^18.3.1",
     "react-i18next": "^13.3.1",
     "three": "^0.167.1",
-    "zustand": "^4.5.4"
+    "zustand": "^4.5.4",
+    "microsoft-cognitiveservices-speech-sdk": "^1.32.0"
   },
   "devDependencies": {
     "@charcoal-ui/tailwind-config": "^2.6.0",
