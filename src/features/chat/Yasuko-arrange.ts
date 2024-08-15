@@ -11,6 +11,7 @@ const YASUKO_API_URL = process.env.NEXT_PUBLIC_YASUKO_DIFY_API_URL
 let yasukoConversationId = ''
 
 let correctedText: string[] = []
+let tempTranscriptions: Transcription[] = []
 
 // ローカルストレージから校正済みテキストを取得
 function loadCorrectedText() {
@@ -78,39 +79,52 @@ function formatTimestamp(timestamp: string): string {
   return date.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
 }
 
+function saveTempTranscriptions(transcriptions: Transcription[]) {
+  tempTranscriptions = transcriptions
+}
+
+function clearTempTranscriptions() {
+  tempTranscriptions = []
+}
+
 export function startPeriodicCorrection() {
   console.log('定期的な校正を開始します')
   return setInterval(async () => {
     console.log('リアルタイム文字起こしの校正をチェックします')
     const storedTranscriptions: Transcription[] = JSON.parse(localStorage.getItem('transcriptions') || '[]')
     if (storedTranscriptions.length > 0) {
-      const textToCorrect = storedTranscriptions.map(t => `${formatTimestamp(t.timestamp)}: ${t.text}`).join('\n')
+      saveTempTranscriptions(storedTranscriptions)
+      const textToCorrect = tempTranscriptions.map(t => `${formatTimestamp(t.timestamp)}: ${t.text}`).join('\n')
       console.log('校正のために送信するテキスト:', textToCorrect)
       
-      let retryCount = 0
-      const maxRetries = 3
-
       const attemptCorrection = async () => {
         try {
           const correctedText = await getYasukoArrangeResponse([{ role: 'user', content: textToCorrect }])
           onCorrectedTextReceived(correctedText)
-          localStorage.setItem('transcriptions', '[]')
+          
+          // 校正済みテキストに対応する部分を transcriptions から削除
+          const newTranscriptions = storedTranscriptions.filter(t => !tempTranscriptions.includes(t))
+          localStorage.setItem('transcriptions', JSON.stringify(newTranscriptions))
+          
+          clearTempTranscriptions()
+          
           if (typeof window !== 'undefined') {
             window.dispatchEvent(new Event('correctedTextUpdated'))
           }
         } catch (error) {
           console.error('校正中にエラーが発生しました:', error)
-          retryCount++
-          if (retryCount < maxRetries) {
-            console.log(`リトライ ${retryCount}/${maxRetries}`)
-            await attemptCorrection()
-          } else {
-            console.log('校正に失敗しました。リアルタイムテキストをそのまま使用します。')
-            onCorrectedTextReceived(textToCorrect)
-            localStorage.setItem('transcriptions', '[]')
-            if (typeof window !== 'undefined') {
-              window.dispatchEvent(new Event('correctedTextUpdated'))
-            }
+          // エラーの場合、一時保存したテキストをそのまま correctedText に保存
+          const uncorrectedText = tempTranscriptions.map(t => `${formatTimestamp(t.timestamp)}: ${t.text}`).join('\n')
+          onCorrectedTextReceived(uncorrectedText)
+          
+          // 対応する部分を transcriptions から削除
+          const newTranscriptions = storedTranscriptions.filter(t => !tempTranscriptions.includes(t))
+          localStorage.setItem('transcriptions', JSON.stringify(newTranscriptions))
+          
+          clearTempTranscriptions()
+          
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new Event('correctedTextUpdated'))
           }
         }
       }

@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import menuStore from '@/features/stores/menu'
 import { getCorrectedText } from '@/features/chat/Yasuko-arrange'
+import styles from '@/styles/TranscriptionViewer.module.css'
 
 interface Transcription {
   timestamp: string
@@ -16,6 +17,8 @@ export const TranscriptionViewer: React.FC = () => {
   const [realtimeTranscriptions, setRealtimeTranscriptions] = useState<Transcription[]>([])
   const [correctedTranscriptions, setCorrectedTranscriptions] = useState<string[]>([])
   const showTranscriptionViewer = menuStore((s) => s.showTranscriptionViewer)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const [autoScroll, setAutoScroll] = useState(true)
 
   useEffect(() => {
     const loadTranscriptions = () => {
@@ -28,7 +31,6 @@ export const TranscriptionViewer: React.FC = () => {
 
     const intervalId = setInterval(loadTranscriptions, 5000) // 5秒ごとに更新
 
-    // カスタムイベントのリスナーを追加
     const handleCorrectedTextUpdated = () => {
       loadTranscriptions()
     }
@@ -40,28 +42,47 @@ export const TranscriptionViewer: React.FC = () => {
     }
   }, [])
 
+  useEffect(() => {
+    if (autoScroll && scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+    }
+  }, [realtimeTranscriptions, correctedTranscriptions, autoScroll])
+
+  const handleScroll = () => {
+    if (scrollRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = scrollRef.current
+      const atBottom = scrollHeight - scrollTop === clientHeight
+      setAutoScroll(atBottom)
+    }
+  }
+
   if (!showTranscriptionViewer) {
     return null
   }
 
   return (
-    <div className="fixed right-0 top-0 min-w-[300px] max-w-[33.333vw] h-full bg-white bg-opacity-80 shadow-lg z-10">
-      <div className="h-full overflow-y-auto" style={{ margin: '20px 20px 0' }}>
-        <div className="space-y-8">
-          <h2 className="text-xl font-bold">校正済みテキスト</h2>
-          {correctedTranscriptions.map((text, index) => (
-            <div key={`corrected-${index}`}>
-              <span className="break-words whitespace-pre-wrap">{text}</span>
-            </div>
-          ))}
-          <hr className="my-4 border-gray-300" />
-          <h2 className="text-xl font-bold">リアルタイム文字起こし</h2>
-          {realtimeTranscriptions.map((item, index) => (
-            <div key={`realtime-${index}`}>
-              <span className="font-semibold">{formatTimestamp(item.timestamp)}: </span>
-              <span className="break-words">{item.text}</span>
-            </div>
-          ))}
+    <div className={styles.viewer}>
+      <div className={styles.content}>
+        <div
+          ref={scrollRef}
+          className={styles.scrollArea}
+          onScroll={handleScroll}
+        >
+          <div className={styles.textContainer}>
+            <h2 className={styles.heading}>Concise Text</h2>
+            {correctedTranscriptions.map((text, index) => (
+              <div key={`corrected-${index}`}>
+                <span className={styles.breakWords}>{text}</span>
+              </div>
+            ))}
+            <hr className={styles.divider} />
+            {realtimeTranscriptions.map((item, index) => (
+              <div key={`realtime-${index}`}>
+                <span className={styles.timestamp}>{formatTimestamp(item.timestamp)}: </span>
+                <span className={styles.breakWords}>{item.text}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>
