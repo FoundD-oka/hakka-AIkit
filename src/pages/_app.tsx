@@ -9,6 +9,7 @@ import settingsStore from '@/features/stores/settings'
 import '@/styles/globals.css'
 import migrateStore from '@/utils/migrateStore'
 import i18n from '../lib/i18n'
+import { startPeriodicCorrection } from '@/features/chat/Yasuko-arrange'
 
 export default function App({ Component, pageProps }: AppProps) {
   useEffect(() => {
@@ -32,6 +33,11 @@ export default function App({ Component, pageProps }: AppProps) {
     settingsStore.setState({ selectLanguage: language })
 
     homeStore.setState({ userOnboarded: true })
+  }, [])
+
+  useEffect(() => {
+    const intervalId = startPeriodicCorrection()
+    return () => clearInterval(intervalId)
   }, [])
 
   return (
