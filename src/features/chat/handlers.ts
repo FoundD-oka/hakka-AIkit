@@ -7,6 +7,7 @@ import homeStore from '@/features/stores/home'
 import settingsStore from '@/features/stores/settings'
 import slideStore from '@/features/stores/slide'
 import { goToSlide } from '@/components/slides'
+import { choice } from './agentChoice';
 
 /**
  * 文字列を処理する関数
@@ -126,74 +127,35 @@ export const processReceivedMessage = async (
   }
 }
 
-/**
- * AIからの応答を処理する関数
- * @param currentChatLog ログに残るメッセージの配列
- * @param messages 解答生成に使用するメッセージの配列
- */
-// TODO: 上の関数とかなり処理が被るのでいずれまとめる
-export const processAIResponse = async (
-  currentChatLog: Message[],
-  messages: Message[]
-) => {
-  homeStore.setState({ chatProcessing: true })
-  let stream
-
-  const ss = settingsStore.getState()
-  const hs = homeStore.getState()
-  const currentSlideMessages: string[] = []
-
-  const aiServiceConfig: AIServiceConfig = {
-    openai: {
-      key: ss.openAiKey || process.env.NEXT_PUBLIC_OPEN_AI_KEY || '',
-      model: ss.selectAIModel,
-    },
-    anthropic: {
-      key: ss.anthropicKey || process.env.NEXT_PUBLIC_ANTHROPIC_KEY || '',
-      model: ss.selectAIModel,
-    },
-    google: {
-      key: ss.googleKey || process.env.NEXT_PUBLIC_GOOGLE_KEY || '',
-      model: ss.selectAIModel,
-    },
-    localLlm: {
-      url: ss.localLlmUrl || process.env.NEXT_PUBLIC_LOCAL_LLM_URL || '',
-      model: ss.selectAIModel || process.env.NEXT_PUBLIC_LOCAL_LLM_MODEL || '',
-    },
-    groq: {
-      key: ss.groqKey || process.env.NEXT_PUBLIC_GROQ_KEY || '',
-      model: ss.selectAIModel,
-    },
-    dify: {
-      key: ss.difyKey || process.env.NEXT_PUBLIC_DIFY_KEY || '',
-      url: ss.difyUrl || process.env.NEXT_PUBLIC_DIFY_URL || '',
-      conversationId: ss.difyConversationId,
-    },
-  }
-
+// 新しい関数: LLMにメッセージを送信する
+async function sendToLLM(
+  aiService: AIService,
+  messages: Message[],
+  aiServiceConfig: AIServiceConfig
+) {
   try {
-    stream = await getAIChatResponseStream(
-      ss.selectAIService as AIService,
-      messages,
-      aiServiceConfig
-    )
+    return await getAIChatResponseStream(aiService, messages, aiServiceConfig)
   } catch (e) {
     console.error(e)
-    stream = null
+    return null
   }
+}
 
-  if (stream == null) {
-    homeStore.setState({ chatProcessing: false })
-    return
-  }
-
-  const reader = stream.getReader()
+// 新しい関数: ストリームレスポンスを処理する
+export async function processStreamResponse(
+  reader: ReadableStreamDefaultReader<any>,
+  currentChatLog: Message[],
+  ss: ReturnType<typeof settingsStore.getState>,
+  hs: ReturnType<typeof homeStore.getState>
+) {
   let receivedMessage = ''
-  let aiTextLog: Message[] = [] // 会話ログ欄で使用
+  let aiTextLog: Message[] = []
   let tag = ''
   let isCodeBlock = false
   let codeBlockText = ''
-  const sentences = new Array<string>() // AssistantMessage欄で使用
+  const sentences = new Array<string>()
+  const currentSlideMessages: string[] = []
+
   try {
     while (true) {
       const { done, value } = await reader.read()
@@ -224,7 +186,7 @@ export const processAIResponse = async (
           if (
             !sentence.includes('```') &&
             !sentence.replace(
-              /^[\s\u3000\t\n\r\[\(\{「［（【『〈《〔｛«‹〘〚〛〙›»〕》〉』】）］」\}\)\]'"''""・、。,.!?！？:：;；\-_=+~～*＊@＠#＃$＄%％^＾&＆|｜\\＼/／`｀]+$/gu,
+              /^[\s\u3000\t\n\r\[\(\{「［（【『〈《〔｛«‹〘〚〛〙›»〕》〉』】）］」\}\)\]'"''""・、。,.!?！？:：;；\-_=+~～*＊@＠#＃$＄%％^＾&＆|｜\\＼/���`｀]+$/gu,
               ''
             )
           ) {
@@ -377,10 +339,84 @@ export const processAIResponse = async (
     }, [])
     .filter((item) => item.content !== '')
 
-  homeStore.setState({
-    chatLog: [...currentChatLog, ...aiTextLog],
-    chatProcessing: false,
-  })
+  return aiTextLog
+}
+
+// メイン関数: 元のprocessAIResponse関数を修正
+export const processAIResponse = async (
+  currentChatLog: Message[],
+  messages: Message[]
+) => {
+  homeStore.setState({ chatProcessing: true })
+
+  const ss = settingsStore.getState()
+  const hs = homeStore.getState()
+
+  const aiServiceConfig: AIServiceConfig = {
+    openai: {
+      key: ss.openAiKey || process.env.NEXT_PUBLIC_OPEN_AI_KEY || '',
+      model: ss.selectAIModel,
+    },
+    anthropic: {
+      key: ss.anthropicKey || process.env.NEXT_PUBLIC_ANTHROPIC_KEY || '',
+      model: ss.selectAIModel,
+    },
+    google: {
+      key: ss.googleKey || process.env.NEXT_PUBLIC_GOOGLE_KEY || '',
+      model: ss.selectAIModel,
+    },
+    localLlm: {
+      url: ss.localLlmUrl || process.env.NEXT_PUBLIC_LOCAL_LLM_URL || '',
+      model: ss.selectAIModel || process.env.NEXT_PUBLIC_LOCAL_LLM_MODEL || '',
+    },
+    groq: {
+      key: ss.groqKey || process.env.NEXT_PUBLIC_GROQ_KEY || '',
+      model: ss.selectAIModel,
+    },
+    dify: {
+      key: ss.difyKey || process.env.NEXT_PUBLIC_DIFY_KEY || '',
+      url: ss.difyUrl || process.env.NEXT_PUBLIC_DIFY_URL || '',
+      conversationId: ss.difyConversationId,
+    },
+  }
+
+  try {
+    // Agent選択のためのLLM呼び出し
+    const { agent, handler } = await choice(currentChatLog, messages);
+
+    if (agent === 'Agent1') {
+      // 通常のLLM処理（既存のprocessAIResponse処理）
+      const stream = await sendToLLM(ss.selectAIService as AIService, messages, aiServiceConfig)
+
+      if (stream == null) {
+        homeStore.setState({ chatProcessing: false })
+        return
+      }
+
+      const reader = stream.getReader()
+      const aiTextLog = await processStreamResponse(reader, currentChatLog, ss, hs)
+
+      homeStore.setState({
+        chatLog: [...currentChatLog, ...aiTextLog],
+        chatProcessing: false,
+      })
+    } else if (handler) {
+      // Agent2, Agent3, Agent4の処理
+      const stream = await sendToLLM(ss.selectAIService as AIService, messages, aiServiceConfig)
+      if (stream == null) {
+        homeStore.setState({ chatProcessing: false })
+        return
+      }
+      const reader = stream.getReader()
+      await handler(reader, currentChatLog, ss, hs);
+    } else {
+      console.error('Unknown agent or missing handler');
+      homeStore.setState({ chatProcessing: false })
+    }
+  } catch (error) {
+    console.error("Error in processAIResponse:", error);
+    homeStore.setState({ chatProcessing: false })
+  }
 }
 
 /**
@@ -445,7 +481,7 @@ export const handleSendChatFn =
           ]
           homeStore.setState({ codeLog: updateLog, chatProcessing: false })
         } else {
-          // その他のコメントの処理（現想���では使用されないはず）
+          // その他のコメントの処理（現想では使用されないはず）
           console.log('error role:', role)
         }
       } else {
