@@ -25,6 +25,8 @@ export interface TransientState {
   webcamStatus: boolean
   ws: WebSocket | null
   voicePlaying: boolean // WebSocketモード用の設定
+  popupContent: string
+  isPopupOpen: boolean
 }
 
 export type HomeState = PersistedState & TransientState
@@ -61,6 +63,8 @@ const homeStore = create<HomeState>()(
       webcamStatus: false,
       ws: null,
       voicePlaying: false,
+      popupContent: '',
+      isPopupOpen: false,
     }),
     {
       name: 'aitube-kit-home',

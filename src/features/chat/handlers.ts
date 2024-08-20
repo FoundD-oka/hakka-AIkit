@@ -141,6 +141,14 @@ async function sendToLLM(
   }
 }
 
+// URLの不要なスペースを削除し、URLの後の文章を分離する関数
+function processUrlsInText(text: string): string {
+  return text.replace(/(\bhttps?:\/\/\S+)(\s+[^http]|$)/g, (match, url, rest) => {
+    const cleanUrl = url.replace(/\s+/g, '');
+    return `<a href="${cleanUrl}" target="_blank">${cleanUrl}</a>${rest}`;
+  });
+}
+
 // 新しい関数: ストリームレスポンスを処理する
 export async function processStreamResponse(
   reader: ReadableStreamDefaultReader<any>,
@@ -155,6 +163,22 @@ export async function processStreamResponse(
   let codeBlockText = ''
   const sentences = new Array<string>()
   const currentSlideMessages: string[] = []
+
+  const processAndDisplayText = (text: string) => {
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const matches = text.match(urlRegex);
+
+    if (matches && matches.length > 0) {
+      const linkedText = text.replace(urlRegex, (url) => `<a href="${url}" target="_blank">${url}</a>`);
+      homeStore.setState({
+        assistantMessage: linkedText,
+      });
+    } else {
+      homeStore.setState({
+        assistantMessage: text,
+      });
+    }
+  };
 
   try {
     while (true) {
@@ -173,7 +197,7 @@ export async function processStreamResponse(
       // 返答を一文単位で切り出して処理する
       while (receivedMessage.length > 0) {
         const sentenceMatch = receivedMessage.match(
-          /^(.+?[。．.!?！？\n]|.{20,}[、,])/
+          /^(.+?[。．.!?！？]\s*|.+?[。．.!?！？]$|.{20,}[、,]\s*)/
         )
         if (sentenceMatch?.[0]) {
           let sentence = sentenceMatch[0]
@@ -186,7 +210,7 @@ export async function processStreamResponse(
           if (
             !sentence.includes('```') &&
             !sentence.replace(
-              /^[\s\u3000\t\n\r\[\(\{「［（【『〈《〔｛«‹〘〚〛〙›»〕》〉』】）］」\}\)\]'"''""・、。,.!?！？:：;；\-_=+~～*＊@＠#＃$＄%％^＾&＆|｜\\＼/���`｀]+$/gu,
+              /^[\s\u3000\t\n\r\[\(\{「［（【『〈《〔｛«‹〘〚〛〙›»〕》〉』】）］」\}\)\]'"''""・、。,.!?！？:：;；\-_=+~～*＊@＠#＃$＄%％^＾&＆|｜\\＼/`｀]+$/gu,
               ''
             )
           ) {
@@ -235,9 +259,7 @@ export async function processStreamResponse(
           speakCharacter(
             aiTalks[0],
             () => {
-              homeStore.setState({
-                assistantMessage: currentAssistantMessage,
-              })
+              processAndDisplayText(currentAssistantMessage);
               hs.incrementChatProcessingCount()
               // スライド用のメッセージを更新
               currentSlideMessages.push(sentence)
@@ -272,9 +294,7 @@ export async function processStreamResponse(
         speakCharacter(
           aiTalks[0],
           () => {
-            homeStore.setState({
-              assistantMessage: currentAssistantMessage,
-            })
+            processAndDisplayText(currentAssistantMessage);
             hs.incrementChatProcessingCount()
             // スライド用のメッセージを更新
             currentSlideMessages.push(receivedMessage)
@@ -339,6 +359,26 @@ export async function processStreamResponse(
     }, [])
     .filter((item) => item.content !== '')
 
+  // すべての音声出力処理が完了するのを待つ
+  await new Promise(resolve => setTimeout(resolve, 500)); // 遅延を500msに増やす
+
+  // 応答が完全に終わった後、URLを含む場合はポップアップを表示
+  const fullResponse = aiTextLog
+    .filter(msg => msg.role === 'assistant')
+    .map(msg => typeof msg.content === 'string' ? msg.content : msg.content[0].text)
+    .join(' ')
+    .replace(/\s+/g, ' ') // 複数の空白を1つに置換
+    .trim(); // 前後の空白を削除
+
+  const urlRegex = /(https?:\/\/\S+)/g;
+  if (urlRegex.test(fullResponse)) {
+    const processedResponse = processUrlsInText(fullResponse);
+    homeStore.setState({ 
+      popupContent: processedResponse,
+      isPopupOpen: true 
+    });
+  }
+
   return aiTextLog
 }
 
@@ -385,7 +425,7 @@ export const processAIResponse = async (
     const { agent, handler } = await choice(currentChatLog, messages);
 
     if (agent === 'Agent1') {
-      // 通常のLLM処理（既存のprocessAIResponse処理）
+      // 常のLLM処理（既存のprocessAIResponse処理）
       const stream = await sendToLLM(ss.selectAIService as AIService, messages, aiServiceConfig)
 
       if (stream == null) {
@@ -421,7 +461,7 @@ export const processAIResponse = async (
 
 /**
  * アシスタントとの会話を行う
- * 画面のチャット欄から入力されたときに実行される処理
+ * 画面のチャット欄から入力されたときに実行される���理
  */
 export const handleSendChatFn =
   (errors: {
